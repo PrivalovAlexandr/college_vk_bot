@@ -109,6 +109,18 @@ for event in VkLongPoll(vk).listen():
                     #rasp = req.json()
                 elif text == 'назад':
                     back_to_menu(id, 'Rasp')
+            elif Trigger['Admin']:
+                if text == 'нюхнуть бебры':
+                    send_message(id, 'Вы занюхнули настолько терпкую бебру, что двинули кони...')
+                elif text == 'рассылка':
+                    msg = ''
+                    for i in cache_dict:
+                       msg+= f'{i} {cache_dict[i][1]}\n' 
+                    send_message(id, msg)
+                elif text == 'пукнуть сливой':
+                    send_message(id, 'Вы так сильно пукнули сливой, что все остальные в помещении двинули кони')
+                elif text == 'назад':
+                    back_to_menu(id, 'Admin')
             elif Trigger['Main']:
                 if text == "расписание":
                     send_message(id, 'Выберите тип расписания', rasp)
@@ -135,7 +147,12 @@ for event in VkLongPoll(vk).listen():
                     Trigger['Profile'] = True
                     Trigger['Main'] = False
                 elif text == "админ":
-                    pass
+                    if cache_dict[id][4] == 1:
+                        Trigger['Admin'] = True
+                        Trigger['Main'] = False
+                        send_message(id, 'Ты админ кароч)', admin)
+                    else:
+                        send_message(id, 'Ты не админ (лох)')
         else:
             if cache_dict[id] == 1:
                 if text.capitalize() not in role:
@@ -217,7 +234,7 @@ for event in VkLongPoll(vk).listen():
                     send_message (id, msg, ['Да', 'Нет'])
             elif cache_dict[id] == 5:
                 if text == "да":
-                    if id in [177157427]:
+                    if id in admin_list:
                         admin = 1
                     else:
                         admin = 0
