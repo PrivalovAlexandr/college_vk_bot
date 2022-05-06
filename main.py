@@ -57,12 +57,7 @@ def send_message (user_id, message, keyboard_array = None, color = VkKeyboardCol
     vk.method ("messages.send", attr)
 
 def back_to_menu (user_id, position):
-    if position == 'Profile':
-        Trigger['Profile'] = False
-    elif position == 'Rasp':
-        Trigger['Rasp'] = False
-    elif position == 'Admin':
-        Trigger['Admin'] = False
+    Trigger[position] = False
     Trigger['Main'] = True
     send_message(user_id, 'Главное меню', menu_key)
              
@@ -77,7 +72,6 @@ for event in VkLongPoll(vk).listen():
 
         if id not in cache_dict:
             Trigger['Reg'] = False
-            Trigger['Send'] = False
             cache_dict[id] = 1
 
         if Trigger['Reg']:
@@ -109,14 +103,34 @@ for event in VkLongPoll(vk).listen():
                     #rasp = req.json()
                 elif text == 'назад':
                     back_to_menu(id, 'Rasp')
+            elif Trigger['Spam']:
+                if Trigger ['Send'] == False:
+                    Trigger['Send'] = True
+                    msg = text.capitalize()
+                    send_message(id, f'Вы подтверждаете рассылку данного сообщения?\n\n{msg}', ['Да', 'Нет', 'Назад'])
+                else:
+                    if text == 'да':
+                        Trigger ['Send'] = False
+                        Trigger ['Spam'] = False
+                        Trigger ['Admin'] = True
+                        for i in cache_dict:
+                            send_message(i, msg)
+                        send_message(id, 'Рассылка завершена', admin_key)
+                    elif text == 'нет':
+                        Trigger ['Send'] = False
+                        send_message(id, 'Отправьте сообщения заново', False)
+                    elif text == 'назад':
+                        Trigger ['Send'] = False
+                        Trigger ['Spam'] = False
+                        Trigger ['Admin'] = True
+                        send_message(id, 'Админ меню', admin_key)
             elif Trigger['Admin']:
                 if text == 'нюхнуть бебры':
                     send_message(id, 'Вы занюхнули настолько терпкую бебру, что двинули кони...')
                 elif text == 'рассылка':
-                    msg = ''
-                    for i in cache_dict:
-                       msg+= f'{i} {cache_dict[i][1]}\n' 
-                    send_message(id, msg)
+                    Trigger['Admin'] = False
+                    Trigger['Spam'] = True
+                    send_message(id, 'Отправьте сообщения для предпросмотра. Отправку сообщения нужно будет подтвердить', False)
                 elif text == 'пукнуть сливой':
                     send_message(id, 'Вы так сильно пукнули сливой, что все остальные в помещении двинули кони')
                 elif text == 'назад':
@@ -150,9 +164,9 @@ for event in VkLongPoll(vk).listen():
                     if cache_dict[id][4] == 1:
                         Trigger['Admin'] = True
                         Trigger['Main'] = False
-                        send_message(id, 'Ты админ кароч)', admin)
+                        send_message(id, 'Админ меню', admin_key)
                     else:
-                        send_message(id, 'Ты не админ (лох)')
+                        send_message(id, 'У вас нет прав администратора')
         else:
             if cache_dict[id] == 1:
                 if text.capitalize() not in role:
@@ -162,13 +176,12 @@ for event in VkLongPoll(vk).listen():
                     else:
                         send_message(id, 'Некорректный выбор')
                 else:
+                    Trigger['Send'] = False
                     user_role = text.capitalize()
                     cache_dict[id] = 2
                     if user_role == role[0]:
-                        last_name = None
                         send_message(id, 'Выберите свой корпус', corpus)
                     else:
-                        Trigger['Send'] = True
                         group = None
                         send_message(id, 'Введите свою фамилию', False)
             elif cache_dict[id] == 2:
@@ -180,12 +193,13 @@ for event in VkLongPoll(vk).listen():
                         cache_dict[id] = 3
                         send_message(id, 'Выберите ваш курс', course)
                 else:
-                    if Trigger['Send']:
+                    if Trigger['Send'] == False:
                         last_name = text.capitalize()
+                        Trigger['Send'] = True
                         send_message(id, 'Ваша фамилия: {}. Все верно?'.format(last_name), ['Да', 'Нет'])
-                        Trigger['Send'] = False
                     else:
                         if text == 'да':
+                            Trigger['Send'] = False
                             cache_dict[id] = 5
                             msg = '''
                             Вы хотете завершить регистрацию с этими данными?
@@ -194,7 +208,7 @@ for event in VkLongPoll(vk).listen():
                             Фамилия: {}'''.format(user_role, last_name)
                             send_message (id, msg, ['Да', 'Нет'])
                         elif text == 'нет':
-                            Trigger['Send'] = True
+                            Trigger['Send'] = False
                             send_message(id, 'Введите свою фамилию', False)
             elif cache_dict[id] == 3:
                 if text not in course:
