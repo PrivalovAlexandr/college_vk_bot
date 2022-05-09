@@ -48,8 +48,7 @@ def send_message (user_id, message, keyboard_array = None, color = VkKeyboardCol
                     keyboard.add_line()
                     line += 1
             else:
-                if line > 1 or len(keyboard_array) > 2:
-                    keyboard.add_line()
+                keyboard.add_line()
                 keyboard.add_button (i, VkKeyboardColor.NEGATIVE)
         attr['keyboard'] = keyboard.get_keyboard()
     elif keyboard_array == False:
@@ -90,6 +89,8 @@ for event in VkLongPoll(vk).listen():
                     Trigger['Profile'] = False
 
                     send_message(id, 'Выберите свою роль', role)
+                elif text == 'следующий курс':
+                    send_message(id, 'совсем ебнутый?')
                 elif text == 'назад':
                     back_to_menu(id, 'Profile')
             elif Trigger['Rasp']:
@@ -157,7 +158,7 @@ for event in VkLongPoll(vk).listen():
 
                     if cache_dict[id][4] == 1:
                         msg += "\n\nАдмин"
-                    send_message(id, msg, ['Сбросить профиль', 'Назад'])
+                    send_message(id, msg, profile)
                     Trigger['Profile'] = True
                     Trigger['Main'] = False
                 elif text == "админ":
@@ -264,4 +265,3 @@ for event in VkLongPoll(vk).listen():
                 elif text == 'нет':
                     cache_dict[id] = 1
                     send_message(id, 'Выберите свою роль', role)
-
