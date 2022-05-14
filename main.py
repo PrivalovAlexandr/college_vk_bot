@@ -21,15 +21,26 @@ vk = vk_api.VkApi(token=key)
 vk._auth_token()
 
 
+def data_base(sql:str, value: tuple = ()):
+    con = sqlite3.connect('vk_bot.db')
+    cur = con.cursor()
+    if value:
+        cur.execute(sql, value)
+    else:
+        if 'SELECT' in sql:
+            query = cur.execute(sql).fetchall()
+            con.close()
+            return query
+        else:
+            cur.execute(sql)
+    con.commit()
+    con.close()
+
 #   //    синхронизация с бд    //
 
-con = sqlite3.connect('vk_bot.db')
-cur = con.cursor()
-users = cur.execute ('SELECT * FROM users').fetchall()
+users = data_base('SELECT * FROM users')
 for i in users:
-    cache_dict[i[0]] = [i[0], i[1], i[2], i[3], i[4]]
-con.close()
-
+    cache_dict[i[0]] = [i[0], i[1], i[2], i[3], i[4], i[5]]
 
 def send_message (user_id: int, message: str, keyboard_array = None, color = VkKeyboardColor.PRIMARY):
     keyboard = VkKeyboard()
@@ -95,13 +106,8 @@ for event in VkLongPoll(vk).listen():
 
         if Trigger['Reg']:
             if Trigger['Profile']:
-                if text == 'Cбросить профиль':
-                    con = sqlite3.connect('vk_bot.db')
-                    cur = con.cursor()
-                    cur.execute(f"DELETE FROM users WHERE id = {id}")
-                    con.commit()
-                    con.close()
-
+                if text == 'Сбросить профиль':
+                    data_base(f"DELETE FROM users WHERE id = {id}")
                     cache_dict[id] = 1
                     Trigger['Send'] = True
                     Trigger['Reg'] = False
@@ -199,6 +205,7 @@ for event in VkLongPoll(vk).listen():
                     user_role = text
                     cache_dict[id] = 2
                     if user_role == role[0]:
+                        last_name = None
                         send_message(id, 'Выберите свой корпус', corpus)
                     else:
                         group = None
@@ -255,12 +262,8 @@ for event in VkLongPoll(vk).listen():
                     else:
                         admin = 0
                     cache_dict[id] = [id, user_role, last_name, user_corpus, group, admin]
-                    con = sqlite3.connect('vk_bot.db')
-                    cur = con.cursor()
                     sql = "INSERT INTO 'users' VALUES (?,?,?,?,?,?)"
-                    cur.execute(sql, (id, user_role, last_name, user_corpus, group, admin))
-                    con.commit()
-                    con.close()
+                    data_base(sql, (id, user_role, last_name, user_corpus, group, admin))
                     Trigger['Reg'] = True
                     send_message(id, 'гатова', menu_key)
                 elif text == 'Нет':
