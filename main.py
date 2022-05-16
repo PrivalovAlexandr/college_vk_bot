@@ -123,8 +123,10 @@ def create_msg (group_rasp: dict):
         some_list[1].append(text)
     msg = ''
     count = 0
+    max_len = len(max(some_list[1], key=len))
     for j in some_list[1]:
-        msg += j.center(len(max(some_list[1], key=len))).join(some_list[0][count])
+        k = max_len - len(j)
+        msg += (j + (k * ' ')).join(some_list[0][count])
         count += 1
     return msg
 
@@ -142,7 +144,7 @@ for event in VkLongPoll(vk).listen():
         if Trigger['Reg']:
             if Trigger['Profile']:
                 if text == 'Сбросить профиль':
-                    data_base(f"DELETE FROM users WHERE id = {id}")
+                    data_base("DELETE FROM users WHERE id = ?", (id,))
                     cache_dict[id] = 1
                     Trigger['Send'] = True
                     Trigger['Reg'] = False
@@ -228,18 +230,10 @@ for event in VkLongPoll(vk).listen():
                 elif text == "Профиль":
                     if cache_dict[id][2] == None:
                         #   студент
-                        msg = '''
-                        Ваш профиль:
-
-                        Роль: {}
-                        Группа: {}'''.format(cache_dict[id][1], cache_dict[id][4])
+                        msg = f'Ваш профиль:\n\nРоль: {cache_dict[id][1]}\nГруппа: {cache_dict[id][4]}'
                     else:
                         #   преподаватель
-                        msg = '''
-                        Ваш профиль:
-
-                        Роль: {}
-                        Фамилия: {}'''.format(cache_dict[id][1], cache_dict[id][2])
+                        msg = f'Ваш профиль:\n\nРоль: {cache_dict[id][1]}\nФамилия: {cache_dict[id][2]}'
 
                     if cache_dict[id][5] == 1:
                         msg += "\n\nАдмин"
@@ -283,16 +277,12 @@ for event in VkLongPoll(vk).listen():
                     if Trigger['Send'] == False:
                         last_name = text
                         Trigger['Send'] = True
-                        send_message(id, 'Ваша фамилия: {}. Все верно?'.format(last_name), ['Да', 'Нет'])
+                        send_message(id, f'Ваша фамилия: {last_name}. Все верно?', ['Да', 'Нет'])
                     else:
                         if text == 'Да':
                             Trigger['Send'] = False
                             cache_dict[id] = 5
-                            msg = '''
-                            Вы хотете завершить регистрацию с этими данными?
-
-                            Роль: {}
-                            Фамилия: {}'''.format(user_role, last_name)
+                            msg = f'Вы хотете завершить регистрацию с этими данными?\n\nРоль: {user_role}\nФамилия: {last_name}'
                             send_message (id, msg, ['Да', 'Нет'])
                         elif text == 'Нет':
                             Trigger['Send'] = False
@@ -317,11 +307,7 @@ for event in VkLongPoll(vk).listen():
                         msg = create_msg(rasp[user_corpus][group])
                         back_to_menu(id, 'Rasp', 'Main', msg)
                     else:
-                        msg = '''
-                        Вы хотете завершить регистрацию с этими данными?
-
-                        Роль: {}
-                        Группа: {}'''.format(user_role, group)
+                        msg = f'Вы хотете завершить регистрацию с этими данными?\n\nРоль: {user_role}\nГруппа: {group}'
                         send_message (id, msg, ['Да', 'Нет'])
             elif cache_dict[id] == 5:
                 if text == "Да":
