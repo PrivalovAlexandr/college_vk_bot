@@ -8,7 +8,6 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 from key import key
 from config import *
-from pprint import pprint
 from random import randint as random
 
 #   //    получение расписания    //
@@ -55,11 +54,13 @@ def send_message (user_id: int, message: str, keyboard_array = None, color = VkK
     #   добавление клавиатуры
     if keyboard_array not in [None, False]:
         line = 1
-        button = 1
+        button = 0
         if len(keyboard_array) > 8:
-            max_button = 4
+            max_button = 3
+        elif 'Своё расписание' in keyboard_array:
+            max_button = 2
         else:
-            max_button = 5
+            max_button = 4
         for i in keyboard_array:
             if i != 'Назад':
                 if button < max_button:
@@ -116,18 +117,9 @@ def course_chain (user_group: str):
     return chain
 
 def create_msg (group_rasp: dict):
-    some_list = [[],[]]
-    for i in group_rasp:
-        text = f"{group_rasp[i][0]} ({group_rasp[i][1]})"
-        some_list[0].append([i + ' | ', f' | {group_rasp[i][2]} \n'])
-        some_list[1].append(text)
     msg = ''
-    count = 0
-    max_len = len(max(some_list[1], key=len))
-    for j in some_list[1]:
-        k = max_len - len(j)
-        msg += (j + (k * ' ')).join(some_list[0][count])
-        count += 1
+    for i in group_rasp:
+        msg += ' | '.join([i, ' '.join([group_rasp[i][0], f"({group_rasp[i][1]})"]), group_rasp[i][2] + '\n'])
     return msg
 
 for event in VkLongPoll(vk).listen():
@@ -170,30 +162,55 @@ for event in VkLongPoll(vk).listen():
                 elif text == 'Назад':
                     back_to_menu(id, 'Change')
             elif Trigger['Rasp']:
-                if text == 'По группам':
+                if text in rasp_key[:2]:
+                    if text == rasp_key[0]:
+                        rasp_type = 'group'
+                    else:
+                        rasp_type = 'teacher'
                     Trigger['Data'] = True
                     Trigger['Rasp'] = False
                     data_list = requests.get('https://bot-t-s.nttek.ru/rest-api/available').json()
                     send_message(id, 'Выберите дату расписания', data_list + ['Назад'])
-                elif text == 'По преподавателям':
-                    pass
-                    #req = requests.get('https://bot-t-s.nttek.ru/rest-api/teacher/15-04')
-                    #rasp = req.json()
                 elif text == 'Назад':
                     back_to_menu(id, 'Rasp')
             elif Trigger['Data']:
                 if text in data_list:
                     if text != 'Назад':
-                        Trigger['Rasp'] = True
-                        Trigger['Reg'] = False
-                        Trigger['Data'] = False
-                        backup_info = cache_dict[id]
-                        user_role = "Студент"
-                        data = text
-                        cache_dict[id] = 2
-                        send_message(id, 'Выберите корпус', corpus)
-                    elif text == 'Назад':
-                        back_to_menu(id, 'Data')
+                        if not Trigger['Mine_Rasp']:
+                            data = text
+                            Trigger['Data'] = False
+                            if rasp_type == 'group':
+                                Trigger['Rasp'] = True
+                                Trigger['Reg'] = False
+                                backup_info = cache_dict[id]
+                                user_role = "Студент"
+                                cache_dict[id] = 2
+                                send_message(id, 'Выберите корпус', corpus)
+                            else:
+                                Trigger['Teacher'] = True
+                                send_message(id, 'Введите фамилию преподавателя', False)
+                        else:
+                            if cache_dict[id][1] == 'Студент':
+                                rasp = requests.get(f'https://bot-t-s.nttek.ru/rest-api/group/{text}').json()
+                                msg = create_msg(rasp[cache_dict[id][3]][cache_dict[id][4]])
+                            else:
+                                rasp = requests.get(f'https://bot-t-s.nttek.ru/rest-api/teacher/{text}').json()
+                                try:
+                                    msg = create_msg(rasp[cache_dict[id][2]])
+                                except KeyError:
+                                    msg = 'В этот день у вас нет пар'
+                            back_to_menu(id, 'Data', 'Main', msg)
+                elif text == 'Назад':
+                    if Trigger['Mine_Rasp']:
+                        Trigger['Mine_Rasp'] = False
+                    back_to_menu(id, 'Data')
+            elif Trigger['Teacher']:
+                rasp = requests.get(f'https://bot-t-s.nttek.ru/rest-api/teacher/{data}').json()
+                try:
+                    msg = create_msg(rasp[text])
+                except KeyError:
+                    msg = 'В этот день у преподавателя нет пар'
+                back_to_menu(id, 'Teacher', 'Main', msg)
             elif Trigger['Spam']:
                 if Trigger ['Send'] == False:
                     Trigger['Send'] = True
@@ -227,6 +244,12 @@ for event in VkLongPoll(vk).listen():
                     Trigger['Rasp'] = True
                     Trigger['Main'] = False
                     send_message(id, 'Выберите тип расписания', rasp_key)
+                elif text == "Своё расписание":
+                    data_list = requests.get('https://bot-t-s.nttek.ru/rest-api/available').json()
+                    Trigger['Data'] = True
+                    Trigger['Mine_Rasp'] = True
+                    Trigger['Main'] = False
+                    send_message(id, 'Выберите дату расписания', data_list + ['Назад'])
                 elif text == "Профиль":
                     if cache_dict[id][2] == None:
                         #   студент
@@ -263,6 +286,7 @@ for event in VkLongPoll(vk).listen():
                         last_name = None
                         send_message(id, 'Выберите корпус', corpus)
                     else:
+                        user_corpus = None
                         group = None
                         send_message(id, 'Введите свою фамилию', False)
             elif cache_dict[id] == 2:
