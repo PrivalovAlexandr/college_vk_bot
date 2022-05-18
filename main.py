@@ -81,14 +81,14 @@ def send_message (user_id: int, message: str, keyboard_array = None, color = VkK
     vk.method ("messages.send", attr)
     return [message, keyboard_array]
 
-def back_to_menu (user_id: int, position: str, menu: str = 'Main', msg: str = None):
+def next_menu (user_id: int, position: str, next: str, msg: str = None, keyboard: list = None):
 #   // возвращение в основные меню из меню функций
     Trigger[position] = False
-    Trigger[menu] = True
-    if menu == 'Main':
+    Trigger[next] = True
+    if next == 'Main':
         _text = 'Главное меню'
         keyboard = menu_key
-    else:
+    elif next == 'Admin':
         _text = 'Админ меню'
         keyboard = admin_key
     if msg != None:
@@ -141,38 +141,32 @@ for event in VkLongPoll(vk).listen():
                     cache_dict[id] = 1
                     Trigger['Send'] = True
                     Trigger['Reg'] = False
-                    Trigger['Main'] = True
-                    Trigger['Profile'] = False
-                    _text = send_message(id, 'Выберите роль', role)
+                    _text = next_menu(id, 'Profile', 'Main', 'Выберите роль', role)
                 elif text == 'Изменить курс':
                     chain = course_chain(cache_dict[id][4])
                     if chain:
-                        _text = send_message(id, 'Выберите группу', chain + ['Назад'])
-                        Trigger['Change'] = True
-                        Trigger['Profile'] = False
+                        _text = next_menu(id, 'Profile', 'Change', 'Выберите группу', chain + ['Назад'])
                     else:
                         _text = send_message(id, 'Для вашей специальности пока что нет других курсов')
                 elif text == 'Назад':
-                    back_to_menu(id, 'Profile')
+                    _text = next_menu(id, 'Profile', 'Main')
             elif Trigger['Change']:
                 if text.upper() in chain:
                     cache_dict[id][4] = text.upper()
                     data_base("UPDATE users SET 'group' = ? WHERE id = ?", (text.upper(), id))
-                    _text = back_to_menu(id, 'Change', 'Main', 'Ваша группа была успешно изменена')
+                    _text = next_menu(id, 'Change', 'Main', 'Ваша группа была успешно изменена')
                 elif text == 'Назад':
-                    back_to_menu(id, 'Change')
+                    _text = next_menu(id, 'Change', 'Main')
             elif Trigger['Rasp']:
                 if text in rasp_key[:2]:
                     if text == rasp_key[0]:
                         rasp_type = 'group'
                     else:
                         rasp_type = 'teacher'
-                    Trigger['Data'] = True
-                    Trigger['Rasp'] = False
                     data_list = requests.get('https://bot-t-s.nttek.ru/rest-api/available').json()
-                    _text = send_message(id, 'Выберите дату расписания', data_list + ['Назад'])
+                    _text = next_menu(id, 'Rasp', 'Data', 'Выберите дату расписания', data_list + ['Назад'])
                 elif text == 'Назад':
-                    back_to_menu(id, 'Rasp')
+                    _text = next_menu(id, 'Rasp', 'Main')
             elif Trigger['Data']:
                 if text in data_list:
                     if text != 'Назад':
@@ -180,12 +174,10 @@ for event in VkLongPoll(vk).listen():
                             data = text
                             Trigger['Data'] = False
                             if rasp_type == 'group':
-                                Trigger['Rasp'] = True
-                                Trigger['Reg'] = False
                                 backup_info = cache_dict[id]
                                 user_role = "Студент"
                                 cache_dict[id] = 2
-                                _text = send_message(id, 'Выберите корпус', corpus)
+                                _text = next_menu(id, 'Reg', 'Rasp', 'Выберите корпус', corpus)
                             else:
                                 Trigger['Teacher'] = True
                                 _text = send_message(id, 'Введите фамилию преподавателя', False)
@@ -199,57 +191,50 @@ for event in VkLongPoll(vk).listen():
                                     msg = create_msg(rasp[cache_dict[id][2]])
                                 except KeyError:
                                     msg = 'В этот день у вас нет пар'
-                            _text = back_to_menu(id, 'Data', 'Main', msg)
+                            _text = next_menu(id, 'Data', 'Main', msg)
                 elif text == 'Назад':
                     if Trigger['Mine_Rasp']:
                         Trigger['Mine_Rasp'] = False
-                    back_to_menu(id, 'Data')
+                    _text = next_menu(id, 'Data', 'Main')
             elif Trigger['Teacher']:
                 rasp = requests.get(f'https://bot-t-s.nttek.ru/rest-api/teacher/{data}').json()
                 try:
                     msg = create_msg(rasp[text])
                 except KeyError:
                     msg = 'В этот день у преподавателя нет пар'
-                _text = back_to_menu(id, 'Teacher', 'Main', msg)
+                _text = next_menu(id, 'Teacher', 'Main', msg)
             elif Trigger['Spam']:
                 if Trigger ['Send'] == False:
                     Trigger['Send'] = True
                     msg = text
                     _text = send_message(id, f'Вы подтверждаете рассылку данного сообщения?\n\n{msg}', ['Да', 'Нет', 'Назад'])
                 else:
-                    if text == 'Да':
+                    if text in ['Да', 'Нет', 'Назад']:
                         Trigger ['Send'] = False
-                        for i in cache_dict:
-                            _text = send_message(i, msg)
-                        _text = back_to_menu(id, 'Spam', 'Admin', 'Рассылка завершена')
-                    elif text == 'Нет':
-                        Trigger ['Send'] = False
-                        _text = send_message(id, 'Отправьте сообщения заново', False)
-                    elif text == 'Назад':
-                        Trigger ['Send'] = False
-                        back_to_menu(id, 'Spam', 'Admin')
+                        if text == 'Да':
+                            for i in cache_dict:
+                                _text = send_message(i, msg)
+                            _text = next_menu(id, 'Spam', 'Admin', 'Рассылка завершена')
+                        elif text == 'Нет':
+                            _text = send_message(id, 'Отправьте сообщения заново', False)
+                        elif text == 'Назад':
+                            next_menu(id, 'Spam', 'Admin')
             elif Trigger['Admin']:
                 if text == 'Нюхнуть бебры':
                     _text = send_message(id, 'Вы занюхнули настолько терпкую бебру, что двинули кони...')
                 elif text == 'Рассылка':
-                    Trigger['Admin'] = False
-                    Trigger['Spam'] = True
-                    _text = send_message(id, 'Отправьте сообщения для предпросмотра. Отправку сообщения нужно будет подтвердить', False)
+                    _text = next_menu(id, 'Admin', 'Spam','Отправьте сообщения для предпросмотра. Отправку сообщения нужно будет подтвердить', False)
                 elif text == 'Пукнуть сливой':
                     _text = send_message(id, 'Вы так сильно пукнули сливой, что все остальные в помещении двинули кони')
                 elif text == 'Назад':
-                    back_to_menu(id, 'Admin')
+                    _text = next_menu(id, 'Admin', 'Main')
             elif Trigger['Main']:
                 if text == "Расписание":
-                    Trigger['Rasp'] = True
-                    Trigger['Main'] = False
-                    _text = send_message(id, 'Выберите тип расписания', rasp_key)
+                    _text = next_menu(id, 'Main', 'Rasp','Выберите тип расписания', rasp_key)
                 elif text == "Своё расписание":
                     data_list = requests.get('https://bot-t-s.nttek.ru/rest-api/available').json()
-                    Trigger['Data'] = True
                     Trigger['Mine_Rasp'] = True
-                    Trigger['Main'] = False
-                    _text = send_message(id, 'Выберите дату расписания', data_list + ['Назад'])
+                    _text = next_menu(id, 'Main', 'Data', 'Выберите дату расписания', data_list + ['Назад'])
                 elif text == "Профиль":
                     if cache_dict[id][2] == None:
                         #   студент
@@ -260,14 +245,10 @@ for event in VkLongPoll(vk).listen():
 
                     if cache_dict[id][5] == 1:
                         msg += "\n\nАдмин"
-                    _text = send_message(id, msg, profile)
-                    Trigger['Profile'] = True
-                    Trigger['Main'] = False
+                    _text = next_menu(id, 'Main', 'Profile', msg, profile)
                 elif text == "Админ":
                     if cache_dict[id][5] == 1:
-                        Trigger['Admin'] = True
-                        Trigger['Main'] = False
-                        _text = send_message(id, 'Админ меню', admin_key)
+                        _text = next_menu(id, 'Main', 'Admin')
                     else:
                         _text = send_message(id, 'У вас нет прав администратора')
         else:
@@ -329,7 +310,7 @@ for event in VkLongPoll(vk).listen():
                         cache_dict[id] = backup_info
                         rasp = requests.get(f'https://bot-t-s.nttek.ru/rest-api/group/{data}').json()
                         msg = create_msg(rasp[user_corpus][group])
-                        _text = back_to_menu(id, 'Rasp', 'Main', msg)
+                        _text = next_menu(id, 'Rasp', 'Main', msg)
                     else:
                         msg = f'Вы хотете завершить регистрацию с этими данными?\n\nРоль: {user_role}\nГруппа: {group}'
                         _text = send_message (id, msg, ['Да', 'Нет'])
@@ -349,6 +330,7 @@ for event in VkLongPoll(vk).listen():
                     _text = send_message(id, 'Выберите роль', role)
         try:
             if vk.method("messages.getConversations", {"offset": 0, "count": 1, "filter": "unanswered"})['count'] != 0:
-                send_message(id, _text[0], _text[1])
-        except Exception as e:
-            print(e)
+                if text in _text[1]:
+                    send_message(id, _text[0], _text[1])
+        except:
+            pass
