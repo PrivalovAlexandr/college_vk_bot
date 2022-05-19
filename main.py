@@ -77,9 +77,9 @@ def send_message (user_id: int, message: str, keyboard_array = None):
     elif keyboard_array == False:
         attr['keyboard'] = keyboard.get_empty_keyboard()
     vk.method ("messages.send", attr)
-    return [message, keyboard_array]
+    return (message, keyboard_array)
 
-def next_menu (user_id: int, position: str, next: str, msg: str = None, keyboard: list = None):
+def next_menu (user_id: int, position: str, next: str, msg: str = None, keyboard = None):
 #   // возвращение в основные меню из меню функций
     Trigger[position] = False
     Trigger[next] = True
@@ -97,10 +97,7 @@ def group_list(corpus: str, course: str):
 #   // список групп по заданному корпусу и курсу
     data_list = requests.get('https://bot-t-s.nttek.ru/rest-api/available').json()
     rasp = requests.get(f'https://bot-t-s.nttek.ru/rest-api/group/{data_list[0]}').json()
-    group_list = []
-    for i in rasp[corpus]:
-        if i[0] == course:
-            group_list.append(i)
+    group_list = [i for i in rasp[corpus] if i[0] == course]
     return group_list             
 
 def course_chain (user_group: str):
@@ -207,7 +204,7 @@ for event in VkLongPoll(vk).listen():
                     msg = text
                     _text = send_message(id, f'Вы подтверждаете рассылку данного сообщения?\n\n{msg}', ['Да', 'Нет', 'Назад'])
                 else:
-                    if text in ['Да', 'Нет', 'Назад']:
+                    if text in ('Да', 'Нет', 'Назад'):
                         Trigger ['Send'] = False
                         if text == 'Да':
                             for i in cache_dict:
@@ -311,7 +308,7 @@ for event in VkLongPoll(vk).listen():
                         _text = next_menu(id, 'Rasp', 'Main', msg)
                     else:
                         msg = f'Вы хотете завершить регистрацию с этими данными?\n\nРоль: {user_role}\nГруппа: {group}'
-                        _text = send_message (id, msg, ['Да', 'Нет'])
+                        _text = send_message (id, msg, ('Да', 'Нет'))
             elif cache_dict[id] == 5:
                 if text == "Да":
                     if id in admin_list:
