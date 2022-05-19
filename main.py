@@ -44,17 +44,16 @@ for i in users:
     i = list(i)
     cache_dict[i[0]] = i
 
-def send_message (user_id: int, message: str, keyboard_array = None, color = VkKeyboardColor.PRIMARY):
+def send_message (user_id: int, message: str, keyboard_array = None):
 #   // отправка сообщения пользователю
-    keyboard = VkKeyboard()
     attr = {
         "user_id": user_id,
         "message": message,
         "random_id": random(-1000, 1000),
         }
     #   добавление клавиатуры
+    keyboard = VkKeyboard()
     if keyboard_array not in [None, False]:
-        line = 1
         button = 0
         if len(keyboard_array) > 8:
             max_button = 3
@@ -65,12 +64,11 @@ def send_message (user_id: int, message: str, keyboard_array = None, color = VkK
         for i in keyboard_array:
             if i != 'Назад':
                 if button < max_button:
-                    keyboard.add_button (i, color)
+                    keyboard.add_button (i, VkKeyboardColor.PRIMARY)
                 else:
                     keyboard.add_line()
-                    keyboard.add_button (i, color)
+                    keyboard.add_button (i, VkKeyboardColor.PRIMARY)
                     button = 0
-                    line += 1
             else:
                 keyboard.add_line()
                 keyboard.add_button (i, VkKeyboardColor.NEGATIVE)
