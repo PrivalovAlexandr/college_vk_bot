@@ -113,14 +113,17 @@ for event in VkLongPoll(vk).listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         id = event.user_id
         text = event.text.capitalize()
-
-        print (id, text)
-
+   
+    #   //    проверка регистрации    //
+   
         if id not in cache_dict:
             Trigger['Reg'] = False
             cache_dict[id] = 1
 
         if Trigger['Reg']:
+            
+            #   //    профиль    //
+            
             if Trigger['Profile']:
                 if text == 'Сбросить профиль':
                     data_base("DELETE FROM users WHERE id = ?", (id,))
@@ -217,6 +220,9 @@ for event in VkLongPoll(vk).listen():
                             'Введите фамилию ещё раз', 
                             False
                         )
+            
+            #   //    расписание    //
+            
             elif Trigger['Rasp']:
                 if text in rasp_key[:2]:
                     if text == rasp_key[0]:
@@ -303,6 +309,9 @@ for event in VkLongPoll(vk).listen():
                     msg, 
                     menu_key
                 )
+            
+            #   //    рассылка    //
+            
             elif Trigger['Spam']:
                 if Trigger ['Send'] is False:
                     Trigger['Send'] = True
@@ -339,6 +348,9 @@ for event in VkLongPoll(vk).listen():
                                 'Админ меню', 
                                 admin_key
                             )
+            
+            #   //    админ меню    //
+            
             elif Trigger['Admin']:
                 if text == 'Нюхнуть бебры':
                     _text = send_message(
@@ -366,6 +378,9 @@ for event in VkLongPoll(vk).listen():
                         'Главное меню', 
                         menu_key
                     )
+            
+            #   //    основное меню    //
+            
             elif Trigger['Main']:
                 if text == "Расписание":
                     _text = next_menu(
@@ -422,7 +437,11 @@ for event in VkLongPoll(vk).listen():
                             'У вас нет прав администратора'
                         )
         else:
+            
+            #   //    регистрация    //
+            
             if cache_dict[id] == 1:
+                #   //    роль - корпус    //
                 if text not in role:
                     if Trigger['Send'] is False:
                         Trigger['Send'] = True
@@ -451,6 +470,7 @@ for event in VkLongPoll(vk).listen():
                             False
                         )
             elif cache_dict[id] == 2:
+                #   //    корпус - курс/фамилия    //
                 if user_role == role[0]:
                     if text in corpus:
                         user_corpus = text
@@ -487,6 +507,7 @@ for event in VkLongPoll(vk).listen():
                                 False
                             )
             elif cache_dict[id] == 3:
+                #   //    курс - группа    //
                 if text in course:
                     group = group_list(user_corpus, text)
                     cache_dict[id] = 4
@@ -496,6 +517,7 @@ for event in VkLongPoll(vk).listen():
                         group
                     )
             elif cache_dict[id] == 4:
+                #   //    подтверждение данных    //
                 if text.upper() in group:
                     group = text.upper()
                     cache_dict[id] = 5
@@ -519,6 +541,7 @@ for event in VkLongPoll(vk).listen():
                             ('Да', 'Нет')
                         )
             elif cache_dict[id] == 5:
+                #   //    завершение регистрации    //
                 if text == "Да":
                     if id in admin_list:
                         admin = True
@@ -556,14 +579,25 @@ for event in VkLongPoll(vk).listen():
                         'Выберите роль', 
                         role
                     )
+        
+        #   //    проверка отправки сообщения    //
+        
         try:
+            unanswered_message = vk.method(
+                "messages.getConversations", 
+                {
+                    "offset": 0, 
+                    "count": 1, 
+                    "filter": "unanswered"
+                }
+                )
             if vk.method("messages.getConversations", 
                 {
                     "offset": 0, 
                     "count": 1, 
                     "filter": "unanswered"
                 }
-                )['count'] != 0:
+            )['count'] != 0:
                 if text in _text[1]:
                     send_message(id, _text[0], _text[1])
         except:
