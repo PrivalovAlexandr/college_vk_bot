@@ -233,6 +233,7 @@ async def reg_confirm (message: Message):
                 )
             cache_dict[id] = cache_dict[id][1]
             user_trigger[id]['Reg'] = True
+            user_trigger[id]['Menu'] = True
             await message.answer(
                 'Главное меню', 
                 keyboard=get_keyboard(menu_key, False))
