@@ -9,7 +9,7 @@
 key = '<YOUR ACCESS TOKEN>'
 ```
 
-Бот асинхронный, написан на <a href='https://github.com/vkbottle/vkbottle'>vkbottle</a>
+Бот асинхронный, написан на <a href='https://github.com/vkbottle/vkbottle' target='_blank'>vkbottle</a>
 
 Задуманный функционал:
 - Регистрация пользователей
