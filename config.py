@@ -9,7 +9,10 @@ trigger_list = {
     #   main menu
     'Menu': False,
     'AfterRestart': False,
-    'Profile': False
+    'Profile': False,
+    #   profile
+    'Change_course': False,
+    'Change_surname': False
 }
 
 role = ('Студент', 'Преподаватель')

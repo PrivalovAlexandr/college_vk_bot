@@ -15,19 +15,27 @@ def group_list(corpus: str, course: str) -> list:
     group_list = [i for i in rasp[corpus] if i[0] == course]
     return group_list      
 
-def get_keyboard (buttons: list | tuple, one_time: bool = True):
+def course_chain (user_group: str):
+#   // course chain for function 'Change course'
+    chain = []
+    data_list = get('https://bot-t-s.nttek.ru/rest-api/available').json()
+    rasp = get(f'https://bot-t-s.nttek.ru/rest-api/group/{data_list[0]}').json()
+    for i in rasp:
+        for j in rasp[i]:
+            if j[1:] == user_group[1:]:
+                chain.append(j)
+    chain.remove(user_group)
+    return chain
+
+def get_keyboard (buttons: list | tuple, one_time: bool = False):
     keyboard = Keyboard(one_time=one_time, inline=False)
     if len(buttons) < 9:
         max_button = 4
     else:
         max_button = 3
-    
-    if buttons == menu_key:
-        max_button = 2
 
     count = 0
     for button in buttons:
-
         if button == 'Назад':
             keyboard.row()
             keyboard.add(Text(button), KeyboardButtonColor.NEGATIVE)
@@ -40,8 +48,6 @@ def get_keyboard (buttons: list | tuple, one_time: bool = True):
             keyboard.add(Text(button), KeyboardButtonColor.PRIMARY)
             count += 1
     return keyboard.get_json()
-        
-
 
 def data_base(sql:str, value: tuple = ()):
 #   // sending database queries

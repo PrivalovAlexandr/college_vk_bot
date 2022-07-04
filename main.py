@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from config import *
 from modules import *
+from keyboards import *
 from key import key
 
 bot = Bot(token=key)
@@ -48,7 +49,7 @@ async def start(message: Message):
         "Здравствуйте, для начала необходимо пройти небольшую регистарцию")
     await message.answer(
         "Выберите вашу роль", 
-        keyboard=get_keyboard(role))
+        keyboard=kb_role)
 
 
 
@@ -64,7 +65,7 @@ async def after_restarting(message: Message):
     user_trigger[message.from_id]['AfterRestart'] = True
     await message.answer(
         'Бот был перезагружен, добро пожаловать в главное меню', 
-        keyboard=get_keyboard(menu_key, False))
+        keyboard=kb_menu)
 
 
 
@@ -94,36 +95,98 @@ async def main_menu(message: Message):
         case 'Архив расписаний':
             await message.answer('технические чоколадки')
 
+#  //  profile
 
 @bot.on.message(func=lambda message:
     (user_trigger[message.from_id]['Profile']))
 async def menu_profile(message:Message):
     id = message.from_id
-    match cache_dict[id][1]:
-        case "Студент":
-            if message.text.capitalize() in profile_stud:
-                match message.text.capitalize():
-                    case "Сбросить профиль":
-                        data_base(
-                            "DELETE from users WHERE id = ?", 
-                            (id,))
-                        begin(id)
-                        await message.answer(
-                            "Выберите вашу роль", 
-                            keyboard=get_keyboard(role))
-        case "Преподаватель":
-            if message.text.capitalize() in profile_teach:
-                match message.text.capitalize():
-                    case "Сбросить  профиль":
-                        begin(id)
-                        await message.answer(
-                            "Выберите вашу роль", 
-                            keyboard=get_keyboard(role))
+    match message.text.capitalize():
+        case 'Сбросить профиль':
+            data_base(
+                "DELETE from users WHERE id = ?", 
+                (id,))
+            begin(id)
+            await message.answer(
+                "Выберите вашу роль", 
+                keyboard=kb_role)
+        case 'Изменить курс':
+            if cache_dict[id][1] == 'Студент':
+                user_trigger[id]['Profile'] = False
+                chain = course_chain(cache_dict[id][4])
+                if chain:
+                    user_trigger[id]['Change_course'] = True
+                    cache_dict[id].append(chain)
+                    await message.answer(
+                        'Выберите номер нового курса',
+                        keyboard=get_keyboard(chain))
+                else:
+                    user_trigger[id]['Menu'] = True
+                    await message.answer(
+                        'К сожалению, для вас пока нет других доступных курсов',
+                        keyboard=kb_menu) 
+        case 'Изменить фамилию':
+            if cache_dict[id][1] == 'Преподаватель':
+                user_trigger[id]['Profile'] = False
+                user_trigger[id]['Change_surname'] = True
+                await message.answer(
+                    'Введите новую фамилию',
+                    keyboard=EMPTY_KEYBOARD)
+        case 'Назад':
+            user_trigger[id]['Profile'] = False
+            await message.answer('Главное меню', keyboard=kb_menu)
+
+@bot.on.message(func=lambda message:
+    (user_trigger[message.from_id]['Change_course']))
+async def change_course(message: Message):
+    id = message.from_id
+    if message.text.upper() in cache_dict[id][5]:
+        cache_dict[id][4] = message.text.upper()
+        del cache_dict[id][5]
+        data_base(
+            "UPDATE users SET 'group' = ? WHERE id = ?",
+            (message.text.upper(), id))
+        user_trigger[id]['Change_course'] = False
+        user_trigger[id]['Menu'] = True
+        await message.answer('Главное меню', keyboard=kb_menu)
+
+@bot.on.message(func=lambda message:
+    (user_trigger[message.from_id]['Change_surname']))
+async def change_surname(message: Message):
+    id = message.from_id
+    text = message.text.capitalize()
+    if not user_trigger[id]['Send']:
+        cache_dict[id].append(text)
+        user_trigger[id]['Send'] = True
+        await message.answer(
+            f'Ваша фамилия {text}. Все верно?', 
+            keyboard=kb_proof)
+    else:
+        match text:
+            case 'Да':
+                user_trigger[id]['Send'] = False
+                user_trigger[id]['Change_surname'] = False
+                user_trigger[id]['Menu'] = True
+                cache_dict[id][2] = cache_dict[id][5]
+                del cache_dict[id][5]
+                data_base(
+                    "UPDATE users SET 'surname' = ? WHERE id = ?",
+                    (cache_dict[id][2], id))
+                await message.answer(
+                    'Ваша фамилия была успешно изменена',
+                    keyboard=kb_menu)
+            case 'Нет':
+                del cache_dict[id][5]
+                user_trigger[id]['Send'] = False
+                await message.answer(
+                    'Введите свою фамилию ещё раз',
+                    keyboard=EMPTY_KEYBOARD)
+        
 
 #    //    registration    //
 
 
-@bot.on.message(func=lambda message: 
+@bot.on.message(func=lambda message:
     (cache_dict[message.from_id][0] == 1) &
     (message.text.capitalize() in role))
 async def reg_role(message: Message):
@@ -132,7 +195,7 @@ async def reg_role(message: Message):
     match text:
         case 'Студент':
             msg = 'Выберите корпус'
-            keyboard = get_keyboard(corpus)
+            keyboard = kb_corpus
         case 'Преподаватель':
             msg = 'Введите свою фамилию'
             keyboard = EMPTY_KEYBOARD
@@ -150,7 +213,7 @@ async def reg_corpus (message: Message):
             cache_dict[id][1].append(text)
             await message.answer(
                 'Выберите курс', 
-                keyboard=get_keyboard(course))
+                keyboard=kb_course)
     else:
         #   teacher
         if not user_trigger[id]['Send']:
@@ -158,7 +221,7 @@ async def reg_corpus (message: Message):
             user_trigger[id]['Send'] = True
             await message.answer(
                 f'Ваша фамилия {text}. Все верно?', 
-                keyboard=get_keyboard(('Да', 'Нет')))
+                keyboard=kb_proof)
         else:
             match text:
                 case 'Да':
@@ -169,13 +232,13 @@ async def reg_corpus (message: Message):
                         user_msg += f'{i}\n'
                     await message.answer(
                         'Вы хотите завершить регистарцию с этими данными?')
-                    keyboard = get_keyboard(('Да', 'Нет'))
+                    await message.answer(user_msg)
                 case 'Нет':
                     del cache_dict[id][1][1]
                     user_trigger[id]['Send'] = False
                     user_msg = 'Введите свою фамилию ещё раз'
-                    keyboard = EMPTY_KEYBOARD
-            await message.answer(user_msg, keyboard=keyboard)
+                    await message.answer(user_msg, keyboard=EMPTY_KEYBOARD)
+            
 
 
 @bot.on.message(func=lambda message: 
@@ -205,7 +268,7 @@ async def reg_group (message: Message):
         for i in cache_dict[id][1]:
             msg += f"{i}\n"
         await message.answer('Вы хотите завершить регистрацию с этими данными?')
-        await message.answer(msg, keyboard=get_keyboard(('Да', 'Нет')))
+        await message.answer(msg, keyboard=kb_proof)
 
 
 @bot.on.message(func=lambda message: cache_dict[message.from_id][0] == 5)
@@ -216,7 +279,7 @@ async def reg_confirm (message: Message):
             cache_dict[id][1].insert(0, id)
             match cache_dict[id][1][1]:
                 case 'Студент':
-                    cache_dict[id][1].insert(3, None)
+                    cache_dict[id][1].insert(2, None)
                 case 'Преподаватель':
                     cache_dict[id][1].extend([None, None])
             try:
@@ -236,11 +299,11 @@ async def reg_confirm (message: Message):
             user_trigger[id]['Menu'] = True
             await message.answer(
                 'Главное меню', 
-                keyboard=get_keyboard(menu_key, False))
+                keyboard=kb_menu)
         case "Нет":
             cache_dict[id] = [1, []]
             await message.answer(
                 "Выберите вашу роль", 
-                keyboard=get_keyboard(role))
+                keyboard=kb_role)
 
 bot.run_forever()
