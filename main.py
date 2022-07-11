@@ -35,6 +35,9 @@ users = data_base('SELECT * FROM users')
 for i in users:
     cache_dict[i[0]] = list(i)
     user_trigger[i[0]] = deepcopy(trigger_list)
+admin = data_base('SELECT * FROM admin')
+for i in admin:
+    admin_list.append(i[0])
 
 
 
@@ -94,6 +97,86 @@ async def main_menu(message: Message):
             await message.answer(msg, keyboard=get_keyboard(profile_key))
         case 'Архив расписаний':
             await message.answer('технические чоколадки')
+
+@bot.on.message(func=lambda message:
+    (user_trigger[message.from_id]['Menu']) &
+    (message.from_id in admin_list) &
+    ('/admin' in message.text))
+async def admin_menu(message:Message):
+    id = message.from_id
+    command = message.text.split(' ')
+    match command[1]:
+        case 'users':
+            await message.answer(f'Сейчас зарегестрировано {len(cache_dict)} пользователей')
+        case 'user':
+            if len(command) > 2:
+                try:
+                    needed_id = int(command[2])
+                except ValueError:
+                    await message.answer('id состоит из цифр так то')
+                if needed_id in cache_dict and len(cache_dict[needed_id]) > 2:
+                    msg = 'Пользователь зарегестрирован'
+                else:
+                    msg = 'Пользователь не зарегистрирован'
+                await message.answer(msg)
+        case 'userbygroup':
+            if len(command) > 2:
+                group = command[2].upper()
+                usr_id = data_base(
+                    "SELECT id FROM users WHERE `group`=?", (group, ))
+                if usr_id:
+                    msg = f'Список пользователей с группой {group}:\n\n'
+                    msg = users_to_msg(msg, usr_id)
+                else:
+                    msg = 'Пользователей с этой группой не найдено'
+                await message.answer(msg)
+        case 'teacherbysurname':
+            if len(command) > 2:
+                surname = command[2].capitalize()
+                teacher = data_base(
+                    'SELECT id FROM users WHERE `surname`=?', 
+                    (surname, ))
+                if teacher:
+                    msg = f'Список преподавателей с фамилией {surname}:\n\n'
+                    msg = users_to_msg(msg, teacher)
+                else:
+                    msg = 'Преподавателей с такой фамилией не найдено'
+                await message.answer(msg)
+        case 'allteacher':
+            teacher = data_base(
+                    "SELECT id FROM users WHERE `role`='Преподаватель'")
+            if teacher:
+                msg = f'Список преподавателей:\n\n'
+                msg = users_to_msg(msg, teacher, cache_dict)
+            else:
+                msg = 'Пользователей с ролью преподавателя не найдено'
+            await message.answer(msg)
+        case 'addadmin':
+            if id == 177157427:
+                if len(command) > 2:
+                    try:
+                        needed_id = int(command[2])
+                    except ValueError:
+                        await message.answer('id состоит из цифр так то')
+                    data_base('INSERT INTO admin VALUES(?)', (needed_id, ))
+                    await message.answer(
+                        f'Пользователь с id {needed_id} добавлен к администраторам')
+        case 'deleteadmin':
+            if id == 177157427:
+                if len(command) > 2:
+                    try:
+                        needed_id = int(command[2])
+                    except ValueError:
+                        await message.answer('id состоит из цифр так то')
+                    data_base(
+                        "DELETE from admin WHERE id = ?", 
+                        (needed_id,))
+                    await message.answer(
+                        f'Пользователь с id {needed_id} был удален из администраторов')
+        case 'alladmin':
+            admins = data_base('SELECT * FROM admin')
+            msg = users_to_msg('Список администраторов:\n\n', admins)
+            await message.answer(msg)
 
 #  //  profile
 
@@ -305,5 +388,6 @@ async def reg_confirm (message: Message):
             await message.answer(
                 "Выберите вашу роль", 
                 keyboard=kb_role)
+
 
 bot.run_forever()

@@ -3,7 +3,9 @@ import sqlite3
 from vkbottle import Keyboard, EMPTY_KEYBOARD, KeyboardButtonColor, Text
 from requests import get
 from copy import deepcopy
+from vk_api import vk_api
 
+from key import key
 from config import *
 
 
@@ -15,7 +17,7 @@ def group_list(corpus: str, course: str) -> list:
     group_list = [i for i in rasp[corpus] if i[0] == course]
     return group_list      
 
-def course_chain (user_group: str):
+def course_chain (user_group: str) -> list:
 #   // course chain for function 'Change course'
     chain = []
     data_list = get('https://bot-t-s.nttek.ru/rest-api/available').json()
@@ -53,20 +55,34 @@ def data_base(sql:str, value: tuple = ()):
 #   // sending database queries
     con = sqlite3.connect('vk_bot.db')
     cur = con.cursor()
-    if value:
-        cur.execute(sql, value)
-    else:
-        if 'SELECT' in sql:
+    if 'SELECT' in sql:
+        if value:
+            query = cur.execute(sql, value).fetchall()
+        else:
             query = cur.execute(sql).fetchall()
-            con.close()
-            return query
+        con.close()
+        return query
+    else:
+        if value:
+            cur.execute(sql, value)
         else:
             cur.execute(sql)
-    con.commit()
-    con.close()
+        con.commit()
+        con.close()
 
 def begin(user_id: int):
     cache_dict[user_id] = [1, []] # [step:int, memory:list]
     user_trigger[user_id] = deepcopy(trigger_list)
     user_trigger[user_id]['Reg'] = False
     user_trigger[user_id]['AfterRestart'] = True
+
+def users_to_msg(start_msg:str, array_to_message:list|tuple, cache_dict:dict = {}) -> str:
+    vk = vk_api.VkApi(token=key)
+    vk._auth_token()
+    for user in array_to_message:
+        usr_info = vk.method('users.get', {'user_id': user[0]})[0]
+        if not cache_dict:
+            start_msg += f'vk.com/id{user[0]} - {usr_info["first_name"]} {usr_info["last_name"]}\n'
+        else:
+            start_msg += f'vk.com/id{user[0]} - {cache_dict[user[0]][2]} - {usr_info["first_name"]} {usr_info["last_name"]}\n'
+    return start_msg

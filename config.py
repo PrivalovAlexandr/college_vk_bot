@@ -1,5 +1,5 @@
 cache_dict = {}
-
+admin_list = []
 user_trigger = {}
 
 trigger_list = {
