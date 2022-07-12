@@ -7,10 +7,12 @@ from modules import *
 from keyboards import *
 from key import key
 
+
+
 bot = Bot(token=key)
     
     
-    #  // на счет задержки пожключения к апи
+    #  // на счет задержки подключения к апи
     #кароче, вставим где получение дат расписания залупку
     #чтобы чекал наличие там первого сентября, если есть, то
     #пора обновлять в бд списочек, его выгружать перед каждым
@@ -84,6 +86,7 @@ async def main_menu(message: Message):
         case 'Профиль':
             id = message.from_id
             user_trigger[id]['Profile'] = True
+            user_trigger[id]['Menu'] = False
             msg = 'Ваш профиль:\n\n'
             for i in cache_dict[id][1:]:
                 if (i != None):
@@ -98,11 +101,16 @@ async def main_menu(message: Message):
         case 'Архив расписаний':
             await message.answer('технические чоколадки')
 
+
+
+#    //    admin menu    //
+
+
 @bot.on.message(func=lambda message:
     (user_trigger[message.from_id]['Menu']) &
     (message.from_id in admin_list) &
     ('/admin' in message.text))
-async def admin_menu(message:Message):
+async def admin_menu(message: Message):
     id = message.from_id
     command = message.text.split(' ')
     match command[1]:
@@ -182,7 +190,7 @@ async def admin_menu(message:Message):
 
 @bot.on.message(func=lambda message:
     (user_trigger[message.from_id]['Profile']))
-async def menu_profile(message:Message):
+async def menu_profile (message: Message):
     id = message.from_id
     match message.text.capitalize():
         case 'Сбросить профиль':
