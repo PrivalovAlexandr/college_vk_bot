@@ -120,13 +120,13 @@ async def admin_menu(message: Message):
             if len(command) > 2:
                 try:
                     needed_id = int(command[2])
+                    if needed_id in cache_dict and len(cache_dict[needed_id]) > 2:
+                        msg = 'Пользователь зарегестрирован'
+                    else:
+                        msg = 'Пользователь не зарегистрирован'
+                    await message.answer(msg)
                 except ValueError:
                     await message.answer('id состоит из цифр так то')
-                if needed_id in cache_dict and len(cache_dict[needed_id]) > 2:
-                    msg = 'Пользователь зарегестрирован'
-                else:
-                    msg = 'Пользователь не зарегистрирован'
-                await message.answer(msg)
         case 'userbygroup':
             if len(command) > 2:
                 group = command[2].upper()
@@ -164,23 +164,36 @@ async def admin_menu(message: Message):
                 if len(command) > 2:
                     try:
                         needed_id = int(command[2])
+                        s = data_base("SELECT * FROM admin WHERE `id`=?", (needed_id,))
+                        if not s:
+                            admin_list.append(needed_id)
+                            data_base('INSERT INTO admin VALUES(?)', (needed_id, ))
+                            await message.answer(
+                                f'Пользователь с id {needed_id} добавлен к администраторам')
+                        else:
+                            await message.answer(
+                                f'Пользователь с id {needed_id} уже является администратором')
                     except ValueError:
                         await message.answer('id состоит из цифр так то')
-                    data_base('INSERT INTO admin VALUES(?)', (needed_id, ))
-                    await message.answer(
-                        f'Пользователь с id {needed_id} добавлен к администраторам')
         case 'deleteadmin':
             if id == 177157427:
                 if len(command) > 2:
                     try:
                         needed_id = int(command[2])
+                        if needed_id != 177157427:
+                            s = data_base("SELECT id FROM admin WHERE `id`=?", (needed_id,))
+                            if s:
+                                admin_list.remove(needed_id)
+                                data_base(
+                                    "DELETE from admin WHERE id = ?", 
+                                    (needed_id,))
+                                await message.answer(
+                                    f'Пользователь с id {needed_id} был удален из администраторов')
+                            else:
+                                await message.answer(
+                                    f'Пользователь с id {needed_id} не является администратором')
                     except ValueError:
                         await message.answer('id состоит из цифр так то')
-                    data_base(
-                        "DELETE from admin WHERE id = ?", 
-                        (needed_id,))
-                    await message.answer(
-                        f'Пользователь с id {needed_id} был удален из администраторов')
         case 'alladmin':
             admins = data_base('SELECT * FROM admin')
             msg = users_to_msg('Список администраторов:\n\n', admins)
@@ -239,7 +252,7 @@ async def change_course(message: Message):
             (message.text.upper(), id))
         user_trigger[id]['Change_course'] = False
         user_trigger[id]['Menu'] = True
-        await message.answer('Главное меню', keyboard=kb_menu)
+        await message.answer('Ваш курс был успешно изменен', keyboard=kb_menu)
 
 @bot.on.message(func=lambda message:
     (user_trigger[message.from_id]['Change_surname']))
